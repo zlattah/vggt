@@ -307,7 +307,7 @@ def apply_sky_segmentation(conf: np.ndarray, image_folder: str) -> np.ndarray:
 
 parser = argparse.ArgumentParser(description="VGGT demo with viser for 3D visualization")
 parser.add_argument(
-    "--image_folder", type=str, default="examples/kitchen/images/", help="Path to folder containing images"
+    "--image_folder", type=str, default="./images/study_room/", help="Path to folder containing images"
 )
 parser.add_argument("--use_point_map", action="store_true", help="Use point map instead of depth-based points")
 parser.add_argument("--background_mode", action="store_true", help="Run the viser server in background mode")
@@ -360,10 +360,18 @@ def main():
     print(f"Preprocessed images shape: {images.shape}")
 
     print("Running inference...")
-    dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
-
-    with torch.no_grad():
+    # Comment / remove the CUDA check
+    # dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    if device == "cuda":
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    else:
+        dtype = torch.float32  # use float32 on CPU for safety
+        
+    if device == "cuda":
         with torch.cuda.amp.autocast(dtype=dtype):
+            predictions = model(images)
+    else:
+        with torch.no_grad():
             predictions = model(images)
 
     print("Converting pose encoding to extrinsic and intrinsic matrices...")
